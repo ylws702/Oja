@@ -54,10 +54,12 @@ namespace Oja
             this.SaveZipButtun.IsEnabled = true;
         }
         [DllImport("Oja_x86.dll", EntryPoint = "zip", CallingConvention = CallingConvention.Cdecl)]
-        private static extern bool Zip(string savePath,
-            [MarshalAs(UnmanagedType.LPArray,SizeConst =InputSize)]
+        private static extern bool Zip(
+            [MarshalAs(UnmanagedType.LPStr)]
+            string savePath,
+            [MarshalAs(UnmanagedType.LPArray,SizeConst = InputSize)]
             int[] input,
-            [MarshalAs(UnmanagedType.LPArray,SizeConst =OutputSize)]
+            [MarshalAs(UnmanagedType.LPArray,SizeConst = OutputSize)]
             ref int[] output);
         private void SaveZipButtun_Click(object sender, RoutedEventArgs e)
         {
