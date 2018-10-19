@@ -58,9 +58,9 @@ namespace Oja
             [MarshalAs(UnmanagedType.LPStr)]
             string savePath,
             [MarshalAs(UnmanagedType.LPArray,SizeConst = InputSize)]
-            int[] input,
+            float[] input,
             [MarshalAs(UnmanagedType.LPArray,SizeConst = OutputSize)]
-            ref int[] output);
+            ref float[] output);
         private void SaveZipButtun_Click(object sender, RoutedEventArgs e)
         {
             SaveFileDialog dialog = new SaveFileDialog()
@@ -74,8 +74,12 @@ namespace Oja
                 return;
             }
             string zpPath = dialog.FileName;
-            int[] input = new int[InputSize];
-            int[] output = new int[OutputSize];
+            float[] input = new float[InputSize];
+            for (int i = 0; i < input.Length; i++)
+            {
+                input[i] = i;
+            }
+            float[] output = new float[OutputSize];
             Zip("131464", input, ref output);
         }
 

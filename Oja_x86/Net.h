@@ -12,9 +12,8 @@ public:
     //inputs: 输入数组,元素个数为节点个数(this->nodeCount)
     void Train(float *inputs);
     //获取输出
-    //inputs: 输入数组,元素个数为节点个数(this->nodeCount)
-    //outputs: 存放输出,元素个数为节点个数(this->nodeCount)
-    void GetOutputs(float *inputs, float *outputs)const;
+    //index: 要获取输出的节点位置(从0开始)
+    float GetOutputs(unsigned index)const;
     ~Net();
 private:
     //节点数

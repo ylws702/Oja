@@ -8,7 +8,7 @@ Node::Node(unsigned connectionCount, float alpha)
     this->weights = new float[connectionCount];
     for (unsigned i = 0; i < connectionCount; i++)
     {
-        this->weights[i] = 0.0f;
+        this->weights[i] = 1.0f / connectionCount;
     }
 }
 
@@ -19,9 +19,8 @@ Node::~Node()
 }
 
 
-void Node::Train(float* inputs, float delta)
+void Node::Train(float* inputs, float* deltas)
 {
-    output = 0.0f;
     for (unsigned i = 0; i < this->connectionCount; i++)
     {
         output += weights[i] * inputs[i];
@@ -29,7 +28,7 @@ void Node::Train(float* inputs, float delta)
     for (unsigned i = 0; i < this->connectionCount; i++)
     {
         //OjaÑ§Ï°·½·¨
-        weights[i] += this->alpha *output*(weights[i] - delta);
+         weights[i] += this->alpha *output*(weights[i] - deltas[i]);
     }
 }
 

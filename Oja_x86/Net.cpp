@@ -19,7 +19,6 @@ Net::Net(unsigned inputCount, unsigned nodeCount, float alpha)
 
 void Net::Train(float *inputs)
 {
-    float delta = 0.0f;
     float* deltas = new float[this->inputCount];
     for (unsigned i = 0; i < this->inputCount; i++)
     {
@@ -28,22 +27,19 @@ void Net::Train(float *inputs)
     //依次训练每个节点
     for (unsigned i = 0; i < this->nodeCount; i++)
     {
+        //累积,w_i(k)[j]*y_i(k)
         for (unsigned j = 0; j < this->inputCount; j++)
         {
-            deltas[i] += this->nodes[i]->GetWeight(j) * this->nodes[i]->GetOutput();
+            deltas[j] += this->nodes[i]->GetWeight(j) * this->nodes[i]->GetOutput();
         }
-        delta += this->nodes[i]->GetOutput();
-        this->nodes[i]->Train(inputs, delta);
+        this->nodes[i]->Train(inputs, deltas);
     }
 }
 
-void Net::GetOutputs(float *inputs, float *outputs) const
+float Net::GetOutputs(unsigned index) const
 {
-    //获取每个节点的输出
-    for (unsigned i = 0; i < this->nodeCount; i++)
-    {
-        outputs[i] = this->nodes[i]->GetOutput();
-    }
+    //获取第index个节点的输出(从0开始)
+    return this->nodes[index]->GetOutput();
 }
 
 Net::~Net()
