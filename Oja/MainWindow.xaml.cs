@@ -1,19 +1,12 @@
 ﻿using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace Oja
 {
@@ -63,124 +56,103 @@ namespace Oja
             {
                 return;
             }
+            this.Cursor = Cursors.Wait;
             string zipPath = dialog.FileName;
-            Zip net = new Zip(zipPath);
+            Zip zip = new Zip(zipPath);
+            Bitmap bitmap = ConvertToBitmap(this.OriginImage.Source as BitmapSource);
+            Bitmap ConvertToBitmap(BitmapSource bitmapSource)
+            {
+                var width = bitmapSource.PixelWidth;
+                var height = bitmapSource.PixelHeight;
+                var stride = width * ((bitmapSource.Format.BitsPerPixel + 7) / 8);
+                var memoryBlockPointer = Marshal.AllocHGlobal(height * stride);
+                bitmapSource.CopyPixels(new Int32Rect(0, 0, width, height), memoryBlockPointer, height * stride, stride);
+                return new Bitmap(width, height, stride, PixelFormat.Format32bppPArgb, memoryBlockPointer);
+            }
+            float[,] data = new float[512, 512];
+            for (int i = 0; i < 512; i++)
+            {
+                for (int j = 0; j < 512; j++)
+                {
+                    data[i, j] = bitmap.GetPixel(i, j).GetBrightness();
+                }
+            }
+            zip.Generate(data);
+            this.Cursor = null;
         }
 
         private void OpenZipButton_Click(object sender, RoutedEventArgs e)
         {
+            OpenFileDialog dialog = new OpenFileDialog()
+            {
+                DefaultExt = ".zg",
+                Filter = "Zipped Graphics (*.zg)|*.zg"
+            };
+            if (dialog.ShowDialog() != true)
+            {
+                return;
+            }
+            float[] data = Unzip.GetData(dialog.FileName);
+            Bitmap bitmap = new Bitmap(512, 512, PixelFormat.Format32bppPArgb);
+            for (int i = 0; i < 512 * 512; i++)
+            {
+                int blockIndex = i / 64;
+                int bitIndex = i - blockIndex * 64;
+                int xStart = blockIndex / 64 * 8;
+                int yStart = blockIndex % 64 * 8;
+                int brightness = Convert.ToInt32(data[i] * 256);
+                if (brightness > 255)
+                {
+                    brightness = 255;
+                }
+                else if (brightness < 0)
+                {
+                    brightness = 0;
+                }
+                bitmap.SetPixel(xStart + bitIndex / 8, yStart + bitIndex % 8, Color.FromArgb(brightness, brightness, brightness));
+            }
+
+            BitmapImage ConvertToBitmapImage(Bitmap src)
+            {
+                MemoryStream memoryStream = new MemoryStream();
+                src.Save(memoryStream, ImageFormat.Bmp);
+                BitmapImage image = new BitmapImage();
+                image.BeginInit();
+                memoryStream.Seek(0, SeekOrigin.Begin);
+                image.StreamSource = memoryStream;
+                image.EndInit();
+                return image;
+            }
+            this.ZippedImage.Source = ConvertToBitmapImage(bitmap);
             this.SaveImageButtun.IsEnabled = true;
         }
 
         private void SaveImageButtun_Click(object sender, RoutedEventArgs e)
         {
+            BitmapSource source = this.ZippedImage.Source as BitmapSource;
+            Bitmap bitmap = new Bitmap(source.PixelWidth, source.PixelHeight, PixelFormat.Format32bppPArgb);
 
-        }
+            BitmapData data = bitmap.LockBits(new Rectangle(System.Drawing.Point.Empty, bitmap.Size), ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
 
-    }
-
-    class Zip
-    {
-        private const int InputSize = 64;
-        private const int OutputSize = 4;
-        private const int width = 512;
-        private const int height = 512;
-
-        [DllImport("Oja_x86.dll", EntryPoint = "init", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void DllInit(string path);
-
-        [DllImport("Oja_x86.dll", EntryPoint = "dispose", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void DllDispose();
-        
-        [DllImport("Oja_x86.dll", EntryPoint = "train", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void DllTrain(
-            [MarshalAs(UnmanagedType.LPArray,SizeConst = InputSize)]
-            float[] input);
-
-        [DllImport("Oja_x86.dll", EntryPoint = "setOffset", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void DllSetOffset(
-            [MarshalAs(UnmanagedType.LPArray,SizeConst = InputSize)]
-            float[] offset);
-
-        [DllImport("Oja_x86.dll", EntryPoint = "writeHeaderAndOffset", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void DllWriteHeaderAndOffset();
-
-        [DllImport("Oja_x86.dll", EntryPoint = "write", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void DllWrite(
-            [MarshalAs(UnmanagedType.LPArray,SizeConst = InputSize)]
-            float[] input);
-
-        public Zip(string path)
-        {
-            DllInit(path);
-        }
-
-        ~Zip()
-        {
-            DllDispose();
-        }
-
-        public void Generate(float[,] data)
-        {
-            if (data.Length != width * height)
+            source.CopyPixels(Int32Rect.Empty, data.Scan0, data.Height * data.Stride, data.Stride);
+            bitmap.UnlockBits(data);
+            SaveFileDialog sfd = new SaveFileDialog()
             {
-                throw new ArgumentOutOfRangeException();
-            }
-            float[] offset = new float[InputSize];
-            for (int i = 0; i < 64; i++)
+                DefaultExt = ".bmp",
+                Filter = "Bitmap (*.bmp)|*.bmp"
+            };
+            if (sfd.ShowDialog() == true)
             {
-                for (int j = 0; j < 64; j++)
+                try
                 {
-                    int xStart = 8 * i;
-                    int yStart = 8 * j;
-                    for (int x = 0; x < 8; x++)
-                    {
-                        for (int y = 0; y < 8; y++)
-                        {
-                            offset[8 * x + y] += data[xStart + x, yStart + y]; ;
-                        }
-                    }
+                    bitmap.Save(sfd.FileName, ImageFormat.Bmp);
                 }
-            }
-            for (int i = 0; i < 64; i++)
-            {
-                offset[i] /= 4096;
-            }
-            float[] block = new float[InputSize];
-            for (int i = 0; i < 64; i++)
-            {
-                for (int j = 0; j < 64; j++)
+                catch (Exception)
                 {
-                    int xStart = 8 * i;
-                    int yStart = 8 * j;
-                    for (int x = 0; x < 8; x++)
-                    {
-                        for (int y = 0; y < 8; y++)
-                        {
-                            block[8 * x + y] = data[xStart + x, yStart + y] - offset[8 * x + y];
-                        }
-                    }
-                    DllTrain(block);
-                }
-            }
-            DllSetOffset(offset);
-            DllWriteHeaderAndOffset();
-            for (int i = 0; i < 64; i++)
-            {
-                for (int j = 0; j < 64; j++)
-                {
-                    int xStart = 8 * i;
-                    int yStart = 8 * j;
-                    for (int x = 0; x < 8; x++)
-                    {
-                        for (int y = 0; y < 8; y++)
-                        {
-                            block[8 * x + y] = data[xStart + x, yStart + y] - offset[8 * x + y];
-                        }
-                    }
-                    DllWrite(block);
+                    MessageBox.Show("保存失败");
                 }
             }
         }
+
     }
 }

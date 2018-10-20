@@ -44,6 +44,14 @@ float Net::GetOutputs(unsigned index, const float* inputs) const
     return this->nodes[index]->GetOutput(inputs);
 }
 
+void Net::GetWeights(unsigned index, float* weights) const
+{
+    for (unsigned i = 0; i < this->inputCount; i++)
+    {
+        weights[i] = this->nodes[index]->GetWeight(i);
+    }
+}
+
 Net::~Net()
 {
     for (unsigned i = 0; i < this->nodeCount; i++)

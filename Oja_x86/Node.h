@@ -13,6 +13,10 @@ public:
     void Train(const float* inputs, const float* deltas);
     //获取输出
     //返回值: 输出值
+    float GetOutput()const;
+    //获取输出
+    //inputs: 输入数组,大小为connectionCount
+    //返回值: 输出值
     float GetOutput(const float* inputs)const;
     //获取权值
     //返回值: 第i个连接的权值

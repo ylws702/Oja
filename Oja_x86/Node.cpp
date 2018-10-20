@@ -34,6 +34,11 @@ void Node::Train(const float* inputs, const float* deltas)
     }
 }
 
+float Node::GetOutput() const
+{
+    return this->output;
+}
+
 float Node::GetOutput(const float* inputs) const
 {
     float output = 0.0f;
