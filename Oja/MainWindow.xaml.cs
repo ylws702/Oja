@@ -16,6 +16,7 @@ namespace Oja
     public partial class MainWindow : Window
     {
         private string imagePath;
+        private string zipPath;
         public MainWindow()
         {
             InitializeComponent();
@@ -48,7 +49,7 @@ namespace Oja
         {
             SaveFileDialog dialog = new SaveFileDialog()
             {
-                FileName = "image",
+                FileName = Path.GetFileNameWithoutExtension(this.imagePath),
                 DefaultExt = ".zg",
                 Filter = "Zipped Graphics (*.zg)|*.zg"
             };
@@ -68,6 +69,12 @@ namespace Oja
                 var memoryBlockPointer = Marshal.AllocHGlobal(height * stride);
                 bitmapSource.CopyPixels(new Int32Rect(0, 0, width, height), memoryBlockPointer, height * stride, stride);
                 return new Bitmap(width, height, stride, PixelFormat.Format32bppPArgb, memoryBlockPointer);
+            }
+            if (bitmap.Width!=512||bitmap.Height!=512)
+            {
+                Bitmap m = bitmap;
+                bitmap = new Bitmap(m, 512, 512);
+                m.Dispose();
             }
             float[,] data = new float[512, 512];
             for (int i = 0; i < 512; i++)
@@ -92,7 +99,8 @@ namespace Oja
             {
                 return;
             }
-            float[] data = Unzip.GetData(dialog.FileName);
+            this.zipPath = dialog.FileName;
+            float[] data = Unzip.GetData(this.zipPath);
             Bitmap bitmap = new Bitmap(512, 512, PixelFormat.Format32bppPArgb);
             for (int i = 0; i < 512 * 512; i++)
             {
@@ -138,6 +146,7 @@ namespace Oja
             bitmap.UnlockBits(data);
             SaveFileDialog sfd = new SaveFileDialog()
             {
+                FileName = Path.GetFileNameWithoutExtension(this.zipPath)+"_zipped",
                 DefaultExt = ".bmp",
                 Filter = "Bitmap (*.bmp)|*.bmp"
             };
