@@ -94,6 +94,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <SuppressStartupBanner>false</SuppressStartupBanner>
       <CallingConvention>Cdecl</CallingConvention>
+      <AdditionalOptions>/D _CRT_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

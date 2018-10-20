@@ -22,8 +22,6 @@ namespace Oja
     /// </summary>
     public partial class MainWindow : Window
     {
-        private const int InputSize = 64;
-        private const int OutputSize = 4;
         private string imagePath;
         public MainWindow()
         {
@@ -53,14 +51,6 @@ namespace Oja
             }
             this.SaveZipButtun.IsEnabled = true;
         }
-        [DllImport("Oja_x86.dll", EntryPoint = "zip", CallingConvention = CallingConvention.Cdecl)]
-        private static extern bool Zip(
-            [MarshalAs(UnmanagedType.LPStr)]
-            string savePath,
-            [MarshalAs(UnmanagedType.LPArray,SizeConst = InputSize)]
-            float[] input,
-            [MarshalAs(UnmanagedType.LPArray,SizeConst = OutputSize)]
-            ref float[] output);
         private void SaveZipButtun_Click(object sender, RoutedEventArgs e)
         {
             SaveFileDialog dialog = new SaveFileDialog()
@@ -73,14 +63,8 @@ namespace Oja
             {
                 return;
             }
-            string zpPath = dialog.FileName;
-            float[] input = new float[InputSize];
-            for (int i = 0; i < input.Length; i++)
-            {
-                input[i] = i;
-            }
-            float[] output = new float[OutputSize];
-            Zip("131464", input, ref output);
+            string zipPath = dialog.FileName;
+            Zip net = new Zip(zipPath);
         }
 
         private void OpenZipButton_Click(object sender, RoutedEventArgs e)
@@ -93,5 +77,110 @@ namespace Oja
 
         }
 
+    }
+
+    class Zip
+    {
+        private const int InputSize = 64;
+        private const int OutputSize = 4;
+        private const int width = 512;
+        private const int height = 512;
+
+        [DllImport("Oja_x86.dll", EntryPoint = "init", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void DllInit(string path);
+
+        [DllImport("Oja_x86.dll", EntryPoint = "dispose", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void DllDispose();
+        
+        [DllImport("Oja_x86.dll", EntryPoint = "train", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void DllTrain(
+            [MarshalAs(UnmanagedType.LPArray,SizeConst = InputSize)]
+            float[] input);
+
+        [DllImport("Oja_x86.dll", EntryPoint = "setOffset", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void DllSetOffset(
+            [MarshalAs(UnmanagedType.LPArray,SizeConst = InputSize)]
+            float[] offset);
+
+        [DllImport("Oja_x86.dll", EntryPoint = "writeHeaderAndOffset", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void DllWriteHeaderAndOffset();
+
+        [DllImport("Oja_x86.dll", EntryPoint = "write", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void DllWrite(
+            [MarshalAs(UnmanagedType.LPArray,SizeConst = InputSize)]
+            float[] input);
+
+        public Zip(string path)
+        {
+            DllInit(path);
+        }
+
+        ~Zip()
+        {
+            DllDispose();
+        }
+
+        public void Generate(float[,] data)
+        {
+            if (data.Length != width * height)
+            {
+                throw new ArgumentOutOfRangeException();
+            }
+            float[] offset = new float[InputSize];
+            for (int i = 0; i < 64; i++)
+            {
+                for (int j = 0; j < 64; j++)
+                {
+                    int xStart = 8 * i;
+                    int yStart = 8 * j;
+                    for (int x = 0; x < 8; x++)
+                    {
+                        for (int y = 0; y < 8; y++)
+                        {
+                            offset[8 * x + y] += data[xStart + x, yStart + y]; ;
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < 64; i++)
+            {
+                offset[i] /= 4096;
+            }
+            float[] block = new float[InputSize];
+            for (int i = 0; i < 64; i++)
+            {
+                for (int j = 0; j < 64; j++)
+                {
+                    int xStart = 8 * i;
+                    int yStart = 8 * j;
+                    for (int x = 0; x < 8; x++)
+                    {
+                        for (int y = 0; y < 8; y++)
+                        {
+                            block[8 * x + y] = data[xStart + x, yStart + y] - offset[8 * x + y];
+                        }
+                    }
+                    DllTrain(block);
+                }
+            }
+            DllSetOffset(offset);
+            DllWriteHeaderAndOffset();
+            for (int i = 0; i < 64; i++)
+            {
+                for (int j = 0; j < 64; j++)
+                {
+                    int xStart = 8 * i;
+                    int yStart = 8 * j;
+                    for (int x = 0; x < 8; x++)
+                    {
+                        for (int y = 0; y < 8; y++)
+                        {
+                            block[8 * x + y] = data[xStart + x, yStart + y] - offset[8 * x + y];
+                        }
+                    }
+                    DllWrite(block);
+                }
+            }
+        }
     }
 }
