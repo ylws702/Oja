@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Oja"
         mc:Ignorable="d"
-        Title="Oja"
+        Title="吴迪-2017141461262"
         MinWidth="480" MinHeight="240">
     <Window.Resources>
         <Style TargetType="Button">
